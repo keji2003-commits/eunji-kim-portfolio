@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eunji Kim</title>
+<style>
+  :root { --bg:#ebe9e6; --ink:#6f6962; --ink-strong:#2a2825; --line:rgba(42,40,37,.14); --accent:#9a8c7d; }
+  * { box-sizing:border-box; margin:0; }
+  html,body { height:100%; overflow:hidden; background:var(--bg); font-family:"Helvetica Neue","Pretendard","Apple SD Gothic Neo",system-ui,sans-serif; color:var(--ink); }
+  canvas { position:fixed; inset:0; width:100%; height:100%; display:block; }
+  header { position:fixed; top:0; left:0; right:0; z-index:2; display:flex; justify-content:space-between; align-items:center; padding:24px 32px; pointer-events:none; }
+  header * { pointer-events:auto; }
+  .logo { font-size:20px; font-weight:500; letter-spacing:-.02em; color:var(--ink-strong); cursor:pointer; }
+  nav { display:flex; gap:8px; }
+  nav button { font:inherit; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink); background:rgba(255,255,255,.7); border:1px solid var(--line); border-radius:99px; padding:9px 18px; cursor:pointer; backdrop-filter:blur(10px); transition:.25s; }
+  nav button:hover { border-color:var(--ink-strong); color:var(--ink-strong); }
+  nav button.on { background:var(--ink-strong); border-color:var(--ink-strong); color:#fff; }
+  .hot { position:fixed; left:0; top:0; z-index:2; width:44px; height:44px; margin:-22px 0 0 -22px; border:0; padding:0; background:none; cursor:pointer; transition:opacity .4s; will-change:transform; }
+  .hot::before { content:""; position:absolute; inset:17px; border-radius:50%; background:#fff; box-shadow:0 0 0 1px rgba(42,40,37,.22), 0 4px 14px rgba(42,40,37,.22); }
+  .hot::after { content:""; position:absolute; inset:11px; border-radius:50%; border:1.2px solid rgba(255,255,255,.95); animation:ping 2.2s ease-out infinite; }
+  @keyframes ping { 0% { transform:scale(.95); opacity:1; } 100% { transform:scale(1.7); opacity:0; } }
+  .hot span { position:absolute; left:50%; top:calc(100% - 6px); transform:translateX(-50%) translateY(-4px); white-space:nowrap; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-strong); background:rgba(255,255,255,.9); padding:5px 11px; border-radius:99px; opacity:0; transition:.25s; pointer-events:none; }
+  .hot:hover span, .hot:focus-visible span { opacity:1; transform:translateX(-50%); }
+  .hot:focus-visible { outline:2px solid var(--ink-strong); outline-offset:2px; border-radius:50%; }
+  body.zoomed .hot, body.loading .hot { opacity:0; pointer-events:none; }
+  #vig { position:fixed; inset:0; z-index:1; pointer-events:none; background:radial-gradient(ellipse 75% 65% at 52% 45%, rgba(0,0,0,0) 40%, rgba(62,50,40,.22) 100%); }
+  #hint { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); z-index:2; font-size:12px; letter-spacing:.08em; padding:11px 22px; border-radius:99px; background:rgba(255,255,255,.8); border:1px solid var(--line); backdrop-filter:blur(10px); transition:opacity .5s; white-space:nowrap; }
+  #hint.off { opacity:0; pointer-events:none; }
+  #panel { position:fixed; left:min(51%, calc(100vw - 480px)); top:calc(50% + 24px); transform:translate(30px,-50%); width:min(460px,calc(100vw - 40px)); max-height:calc(100vh - 120px); overflow:auto; z-index:3; padding:28px 32px; border-radius:28px; background:rgba(255,255,255,.93); border:1px solid rgba(255,255,255,.9); box-shadow:0 30px 80px rgba(60,50,40,.16); opacity:0; pointer-events:none; will-change:opacity, transform; transition:opacity .5s .45s, transform .5s .45s; }
+  #panel.on { opacity:1; transform:translate(0,-50%); pointer-events:auto; }
+  #panel .tag { display:inline-block; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
+  #panel h2 { font-size:32px; font-weight:500; letter-spacing:-.03em; color:var(--ink-strong); margin-bottom:10px; }
+  #panel h3 { font-size:11px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:20px 0 4px; }
+  #panel a { color:var(--ink-strong); text-decoration:none; border-bottom:1px solid var(--line); }
+  #panel a:hover { border-bottom-color:var(--ink-strong); }
+  #panel .meta { display:block; font-size:13px; opacity:.8; }
+  #panel .label { display:inline-block; min-width:92px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; opacity:.7; }
+  #panel p, #panel li { font-size:15px; line-height:1.8; }
+  #panel ul { list-style:none; padding:0; }
+  #panel li { padding:11px 0; border-bottom:1px solid var(--line); }
+  #panel .bi { margin:0 0 8px; }
+  #panel .bi p { margin:0; }
+  #panel .en { display:block; font-size:12px; line-height:1.55; opacity:.62; margin-top:1px; }
+  #panel li .en { margin-top:1px; }
+  #panel .role { display:block; margin-bottom:14px; } #panel .role > span:first-child { font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); }
+  #panel .invite { margin-top:14px; }
+  #panel .card { padding:12px 0 14px; border-bottom:1px solid var(--line); }
+  #panel .card:first-child { padding-top:4px; }
+  #panel .card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  #panel .card-head strong { font-size:17px; font-weight:500; letter-spacing:-.01em; color:var(--ink-strong); }
+  #panel .status { flex:none; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; padding:4px 9px; border-radius:99px; border:1px solid var(--line); color:var(--ink); }
+  #panel .status.live { background:var(--ink-strong); border-color:var(--ink-strong); color:#fff; }
+  #panel .card .meta { margin:2px 0 8px; }
+  #panel .tags { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 10px; }
+  #panel .tags span { font-size:11px; letter-spacing:.04em; padding:3px 9px; border-radius:99px; background:rgba(42,40,37,.06); color:var(--ink); }
+  #panel a.cta { display:inline-block; font-size:13px; border-bottom:1px solid var(--ink-strong); }
+  #panel .note { margin-top:10px; } #panel .note p { font-size:13px; opacity:.8; }
+  #panel .updated { margin-top:14px; font-size:11.5px; letter-spacing:.06em; opacity:.6; }
+  #back { margin-top:16px; font:inherit; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-strong); background:none; border:1px solid var(--ink-strong); border-radius:99px; padding:9px 18px; cursor:pointer; transition:.25s; }
+  #back:hover { background:var(--ink-strong); color:#fff; }
+  #loader { position:fixed; inset:0; z-index:9; display:grid; place-items:center; align-content:center; gap:18px; background:var(--bg); color:var(--ink-strong); transition:opacity .9s; }
+  #loader.off { opacity:0; pointer-events:none; }
+  #loader .name { font-size:20px; letter-spacing:-.02em; }
+  #loader .bar { width:160px; height:2px; background:var(--line); border-radius:2px; overflow:hidden; }
+  #loader .bar i { display:block; height:100%; width:0; background:var(--ink-strong); transition:width .3s; }
+  #loader .pct { font-size:11px; letter-spacing:.12em; opacity:.6; }
+  #loader.err .bar { display:none; }
+  @media (max-width:700px) { #panel { left:50%; top:auto; bottom:20px; max-height:56vh; padding:26px 28px; transform:translate(-50%,30px); } #panel h2 { font-size:28px; } #panel.on { transform:translate(-50%,0); } nav button { padding:8px 12px; } .logo { display:none; } header { justify-content:center; } #hint { bottom:20px; } }
+  @media (prefers-reduced-motion:reduce) { .hot::after { animation:none; } #panel { transition:none; } }
+  body.demo #panel, body.demo #loader, body.demo #hint, body.demo nav button { transition:none !important; } body.demo .hot::after { animation:none; } body.demo .hot span { display:none; }
+</style>
+</head>
+<body class="loading">
+<div id="loader"><div class="name">Eunji Kim</div><div class="bar"><i id="lbar"></i></div><div class="pct" id="lpct">LOADING</div></div>
+<div id="vig" aria-hidden="true"></div>
+<canvas id="c" aria-label="열린 락커와 캐릭터, 스탠드 거울과 스니커즈가 있는 3D 스튜디오 장면. 캐릭터, 락커, 거울, 문에 걸린 행택을 눌러 About, Work, Now, Contact을 볼 수 있어요."></canvas>
+<header><div class="logo" id="home">Eunji Kim</div>
+  <nav><button data-k="about">About</button><button data-k="work">Work</button><button data-k="mirror">Now</button><button data-k="contact">Contact</button></nav></header>
+<button class="hot" data-k="about" aria-label="About 열기"><span>about</span></button>
+<button class="hot" data-k="work" aria-label="Work 열기"><span>work</span></button>
+<button class="hot" data-k="mirror" aria-label="Now 열기"><span>now</span></button>
+<button class="hot" data-k="contact" aria-label="Contact 열기"><span>contact</span></button>
+<div id="hint">캐릭터, 락커, 거울, 행택을 눌러 보세요</div>
+<div id="panel" role="dialog" aria-live="polite"><span class="tag" id="ptag"></span><h2 id="ptitle"></h2><div id="pbody"></div><button id="back">← back</button></div>
+
+<noscript><p style="position:fixed;inset:0;display:grid;place-items:center;background:#ebe9e6;color:#2a2825">이 페이지는 JavaScript와 WebGL이 필요해요.</p></noscript>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+
+const CONTENT = {
+  name: 'Eunji Kim',
+  about: {
+    role: ['AI 바이브코더 · 경기도 분당', 'AI vibe coder · Bundang, Korea'],
+    lines: [
+      ['경기도 분당에서 AI 바이브코딩으로 만들고 싶은 것들을 만들고 있어요.', 'Based in Bundang, Korea. I build the things I want to make with AI vibe coding.'],
+      ['요즘은 3D 웹 장면이나 작은 게임 같은 걸 만들어요. 만들고 싶은 게 생기면 일단 시작하고, 방법은 만들면서 찾는 편이에요.', 'Lately that means 3D web scenes and small games. When I want something to exist, I just start and figure out the how along the way.'],
+    ],
+    currently: ['정글 마을 아케이드 게임을 만드는 중이에요.', 'Currently building a jungle-village arcade game.'],
+    invite: ['같이 만들고 싶은 게 있다면 편하게 연락 주세요.', 'If you want to make something together, just say hi.'],
+    facts: [['Tools', 'Claude Code · Meshy · three.js'], ['Making', '3D 웹 장면 · 아케이드 게임 · 콘셉트 이미지'], ['Based', 'Bundang, Korea']],
+  },
+  work: {
+    items: [
+      { title: 'Jungle Village Arcade', sub: '정글 마을 아케이드', status: ['만드는 중', 'in progress'], live: false,
+        desc: ['정글 마을을 무대로 한 아케이드 게임. 완성되면 시뮬레이션 영상을 X에 올려요.', 'An arcade game set in a jungle village. A simulation video drops on X when it is done.'],
+        tags: ['AI vibe coding', '3D', 'Meshy'], url: 'https://x.com/habeebee_0', cta: ['X에서 소식 받기', 'Follow on X'] },
+      { title: 'Locker Room Portfolio', sub: '지금 보고 있는 이 페이지', status: ['완성', 'live'], live: true,
+        desc: ['락커, 캐릭터, 거울, 스니커즈를 Meshy로 만들고 three.js로 조립했어요.', 'Locker, character, mirror and sneakers made in Meshy, assembled in three.js.'],
+        tags: ['three.js', 'Meshy', 'Claude Code'], url: '', cta: null },
+    ],
+    note: ['모든 작업이 온라인에 있진 않아요. 새 작업은 X에 먼저 올라와요.', 'Not everything is online yet. New work shows up on X first.'],
+  },
+  now: {
+    status: ['협업과 대화, 언제든 환영이에요.', 'Open to collaborations and conversations.'],
+    log: [
+      ['정글 마을 지도와 캐릭터를 다듬는 중', 'Shaping the jungle village map and characters'],
+      ['Claude Code로 바이브코딩 워크플로 실험', 'Experimenting with a vibe-coding workflow in Claude Code'],
+      ['이 포트폴리오 페이지 만들기', 'Building this portfolio page'],
+    ],
+    updated: 'Updated 2026.10',
+  },
+  contact: {
+    status: ['협업, 피드백, 그냥 인사. 다 좋아요.', 'Collabs, feedback, or just a hello. All welcome.'],
+    rows: [
+      { label: 'email', value: 'kejimuse@gmail.com', url: 'mailto:kejimuse@gmail.com' },
+      { label: 'x', value: '@habeebee_0', url: 'https://x.com/habeebee_0' },
+      { label: 'instagram', value: '@habeebee0_0', url: 'https://www.instagram.com/habeebee0_0/' },
+      { label: 'linkedin', value: 'Eunji Kim', url: 'https://www.linkedin.com/in/eunji-kim-852953356/' },
+    ],
+    credits: 'Made with three.js · Meshy · Claude Code',
+  },
+};
+const TITLES = { about:'About', work:'Work', mirror:'Now', contact:'Contact' };
+// 데모 모드(?demo=1): 공개 영상용. 개인정보와 실제 내용을 자리표시 문구로 바꾸고, 시간은 가상 시계로 외부에서 구동한다.
+const DEMO = new URLSearchParams(location.search).has('demo');
+if (DEMO) {
+  document.body.classList.add('demo');
+  Object.assign(CONTENT, {
+    name: 'Your Name',
+    about: { role: ['역할 · 도시', 'Role · City'],
+      lines: [['소개 문장이 들어가는 자리예요.', 'Your intro goes here.'], ['무엇을 만드는지 한 줄로 적어요.', 'One line on what you make.']],
+      currently: ['지금 만들고 있는 것 한 줄.', 'What you are building right now.'], invite: ['연락은 편하게.', 'Say hi anytime.'],
+      facts: [['Tools', 'Tool A · Tool B · Tool C'], ['Making', '3D 웹 장면 · 게임 · 이미지'], ['Based', 'City, Country']] },
+    work: { items: [
+      { title: 'Project 01', sub: '프로젝트 부제', status: ['만드는 중', 'in progress'], live: false, desc: ['프로젝트 설명 한 줄.', 'One line about the project.'], tags: ['Tag', 'Tag', 'Tag'], url: '', cta: null },
+      { title: 'Project 02', sub: '프로젝트 부제', status: ['완성', 'live'], live: true, desc: ['프로젝트 설명 한 줄.', 'One line about the project.'], tags: ['Tag', 'Tag'], url: '', cta: null } ],
+      note: ['새 작업은 소셜에 먼저 올라와요.', 'New work shows up on social first.'] },
+    now: { status: ['협업과 대화 환영.', 'Open to collaborations.'], log: [['지금 하는 일 01', 'Current thing 01'], ['지금 하는 일 02', 'Current thing 02'], ['지금 하는 일 03', 'Current thing 03']], updated: 'Updated 2026.10' },
+    contact: { status: ['인사, 피드백, 협업 모두 환영.', 'Hello, feedback, collabs. All welcome.'],
+      rows: [{ label:'email', value:'hello@example.com', url:'' }, { label:'x', value:'@handle', url:'' }, { label:'instagram', value:'@handle', url:'' }, { label:'linkedin', value:'Your Name', url:'' }],
+      credits: 'Made with three.js · Meshy · Claude Code' },
+  });
+}
+// 모델 파일 (Meshy 원본을 gltf-transform으로 압축한 웹용 GLB)
+const MODELS = { locker: 'assets/locker.glb', hailey: 'assets/hailey.glb', mirror: 'assets/mirror.glb', sneakers: 'assets/sneakers.glb' };
+
+function el(tag, text, attrs) { const e = document.createElement(tag); if (text != null) e.textContent = text; if (attrs) Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); return e; }
+const safeUrl = u => /^(https?:|mailto:)/i.test(u) ? u : '';
+function linkOrText(text, url) { const u = safeUrl(url); return u ? el('a', text, { href:u, target:'_blank', rel:'noopener noreferrer' }) : document.createTextNode(text); }
+// 한 줄씩 한글 + 영문 병기
+function bi(pair, tag = 'p') { const w = el('div', null, { class:'bi' }); w.appendChild(el(tag, pair[0])); w.appendChild(el('span', pair[1], { class:'en' })); return w; }
+function render(key) {
+  const f = document.createDocumentFragment(), c = CONTENT;
+  if (key === 'about') {
+    const a = c.about;
+    f.appendChild(bi(a.role, 'span')).classList.add('role');
+    a.lines.forEach(l => f.appendChild(bi(l)));
+    f.appendChild(el('h3', 'Currently')); f.appendChild(bi(a.currently));
+    f.appendChild(bi(a.invite)).classList.add('invite');
+    const ul = el('ul'); a.facts.forEach(([k, v]) => { const li = el('li'); li.appendChild(el('span', k, { class:'label' })); li.appendChild(document.createTextNode(v)); ul.appendChild(li); }); f.appendChild(ul);
+  } else if (key === 'work') {
+    c.work.items.forEach(w => {
+      const card = el('div', null, { class:'card' });
+      const head = el('div', null, { class:'card-head' }); head.appendChild(el('strong', w.title)); head.appendChild(el('span', w.status[0] + ' · ' + w.status[1], { class:'status' + (w.live ? ' live' : '') })); card.appendChild(head);
+      card.appendChild(el('span', w.sub, { class:'meta' }));
+      card.appendChild(bi(w.desc));
+      const tags = el('div', null, { class:'tags' }); w.tags.forEach(t => tags.appendChild(el('span', t))); card.appendChild(tags);
+      if (w.cta && safeUrl(w.url)) { const a = el('a', w.cta[0] + ' · ' + w.cta[1] + ' ↗', { href:w.url, target:'_blank', rel:'noopener noreferrer', class:'cta' }); card.appendChild(a); }
+      f.appendChild(card);
+    });
+    f.appendChild(bi(c.work.note)).classList.add('note');
+  } else if (key === 'mirror') {
+    f.appendChild(bi(c.now.status));
+    f.appendChild(el('h3', '지금 · Now'));
+    const ul = el('ul'); c.now.log.forEach(l => { const li = el('li'); li.appendChild(document.createTextNode(l[0])); li.appendChild(el('span', l[1], { class:'en' })); ul.appendChild(li); }); f.appendChild(ul);
+    f.appendChild(el('span', c.now.updated, { class:'meta updated' }));
+  } else {
+    f.appendChild(bi(c.contact.status));
+    const ul = el('ul'); c.contact.rows.forEach(x => { const li = el('li'); li.appendChild(el('span', x.label, { class:'label' })); li.appendChild(linkOrText(x.value, x.url)); ul.appendChild(li); }); f.appendChild(ul);
+    f.appendChild(el('span', c.contact.credits, { class:'meta updated' }));
+  }
+  return f;
+}
+document.querySelectorAll('.logo').forEach(n => n.textContent = CONTENT.name);
+document.querySelector('#loader .name').textContent = CONTENT.name;
+document.title = CONTENT.name;
+
+const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+const BG = 0xebe9e6;
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+const small = Math.min(innerWidth, innerHeight) < 700;
+renderer.setPixelRatio(Math.min(devicePixelRatio, small ? 2 : 1.5));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.VSMShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .9;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(BG);
+// 그라데이션 돔: 아래는 바닥/안개색, 위로 갈수록 조금 어둡고 차갑게
+const dome = new THREE.Mesh(new THREE.SphereGeometry(60, 32, 16), new THREE.ShaderMaterial({
+  side:THREE.BackSide, depthWrite:false, fog:false, toneMapped:false,
+  uniforms:{ top:{ value:new THREE.Color(0xc6c2be) }, bottom:{ value:new THREE.Color(BG) }, offset:{ value:0 }, exponent:{ value:.5 } },
+  vertexShader:'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+  fragmentShader:'uniform vec3 top; uniform vec3 bottom; uniform float offset; uniform float exponent; varying vec3 vW; void main(){ float h = normalize(vW + vec3(0.0, offset, 0.0)).y; gl_FragColor = vec4(mix(bottom, top, pow(max(h, 0.0), exponent)), 1.0);\n#include <colorspace_fragment>\n}',
+}));
+dome.renderOrder = -1; scene.add(dome);
+scene.fog = new THREE.Fog(BG, 9, 26);
+const camera = new THREE.PerspectiveCamera(38, 1, .1, 120); camera.layers.enable(1);
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), .04).texture;
+scene.environmentIntensity = .3;
+
+scene.add(new THREE.HemisphereLight(0xfff8f0, 0xcfc7bd, .4));
+// 키 라이트: 왼쪽 앞, 낮은 각도 → 오른쪽 뒤로 길게 떨어지는 따뜻한 그림자
+const sun = new THREE.DirectionalLight(0xffe6cc, 3.0);
+sun.position.set(-7, 5, 6);
+sun.castShadow = true; sun.shadow.mapSize.set(small ? 1024 : 1536, small ? 1024 : 1536); sun.shadow.radius = 3; sun.shadow.blurSamples = 8; sun.shadow.bias = -.0006; sun.shadow.normalBias = .02;
+Object.assign(sun.shadow.camera, { left:-8, right:8, top:8, bottom:-8, near:1, far:40 });
+scene.add(sun);
+// 필: 오른쪽에서 차갑고 약하게
+const fill = new THREE.DirectionalLight(0xdfe6f0, .45); fill.position.set(7, 3, 4); scene.add(fill);
+// 림: 뒤에서 머리카락과 어깨 윤곽
+const rim = new THREE.DirectionalLight(0xfff4e6, 1.6); rim.position.set(1.5, 4, -6); scene.add(rim);
+// 호버 스팟: 가리킨 대상 쪽으로 따뜻한 빛이 따라감
+const spot = new THREE.PointLight(0xffe2c4, 0, 4.5, 2); spot.position.set(.6, 2, 1); scene.add(spot);
+const spotGoal = new THREE.Vector3(.6, 2, 1);
+
+const WHITE = 0xffffff;
+const mat = (c, o = {}) => new THREE.MeshPhysicalMaterial(Object.assign({ color:c, roughness:.55, metalness:0, clearcoat:.25, clearcoatRoughness:.5 }, o));
+const shade = m => { m.castShadow = m.receiveShadow = true; return m; };
+const rbox = (w, h, d, c, p, r = .06, o) => { const m = shade(new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - .001, h / 2 - .001, d / 2 - .001)), mat(c, o))); m.position.set(...p); return m; };
+const cyl = (rt, rb, h, c, p, seg = 20, o) => { const m = shade(new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat(c, o))); m.position.set(...p); return m; };
+const ball = (r, c, p, o) => { const m = shade(new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), mat(c, o))); m.position.set(...p); return m; };
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+function canvasTex(w, h, draw, repeat) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; draw(cv.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat); }
+  return t;
+}
+function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+// 스튜디오: 끝이 안 보이는 배경 + 접지 그림자만
+const wallZ = -2.2; // 락커 뒷면 기준선
+const cyc = canvasTex(1024, 1024, (g, w, h) => {
+  const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, '#efede9'); gr.addColorStop(.5, '#ebe9e6'); gr.addColorStop(1, '#e4e1dd'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  // 가운데(피사체 주변)만 알파를 낮춰 아래 반사가 옅게 비치도록
+  const hole = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * .075); hole.addColorStop(0, 'rgba(0,0,0,.3)'); hole.addColorStop(.55, 'rgba(0,0,0,.16)'); hole.addColorStop(1, 'rgba(0,0,0,0)');
+  g.globalCompositeOperation = 'destination-out'; g.fillStyle = hole; g.fillRect(0, 0, w, h); g.globalCompositeOperation = 'source-over';
+});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), new THREE.MeshBasicMaterial({ map:cyc, transparent:true, toneMapped:false, depthWrite:false }));
+floor.rotation.x = -Math.PI / 2; floor.position.set(.9, .002, -1.0); floor.renderOrder = 1; scene.add(floor);
+// 바닥 반사 (webgl_mirror의 Reflector). 오버레이 아래에서 피사체 근처만 비친다.
+const reflRes = small ? 512 : Math.min(1024, Math.round(Math.max(innerWidth, innerHeight) * Math.min(devicePixelRatio, 2) * .5));
+const mirror = new Reflector(new THREE.CircleGeometry(16, 48), { clipBias:.003, textureWidth:reflRes, textureHeight:reflRes, color:0x7e7a76 });
+mirror.rotation.x = -Math.PI / 2; mirror.position.set(.9, 0, -1.0); scene.add(mirror);
+const catcher = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), new THREE.ShadowMaterial({ color:0x4a3f36, opacity:.19 }));
+catcher.rotation.x = -Math.PI / 2; catcher.position.y = .004; catcher.receiveShadow = true; catcher.renderOrder = 2; scene.add(catcher);
+const contactTex = canvasTex(256, 256, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(60,54,48,.5)'); gr.addColorStop(.45, 'rgba(60,54,48,.16)'); gr.addColorStop(1, 'rgba(60,54,48,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+// 바닥 빛 웅덩이(스포트 조명이 떨어진 자리) + 피사체 뒤 부드러운 후광
+const poolTex = canvasTex(512, 512, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,252,247,.55)'); gr.addColorStop(.5, 'rgba(255,252,247,.18)'); gr.addColorStop(1, 'rgba(255,252,247,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+const pool = new THREE.Mesh(new THREE.PlaneGeometry(9, 5.5), new THREE.MeshBasicMaterial({ map:poolTex, transparent:true, depthWrite:false, toneMapped:false }));
+pool.rotation.x = -Math.PI / 2; pool.position.set(.9, .003, -.9); pool.renderOrder = 2; scene.add(pool);
+const halo = new THREE.Mesh(new THREE.PlaneGeometry(11, 9), new THREE.MeshBasicMaterial({ map:poolTex, transparent:true, depthWrite:false, toneMapped:false, opacity:.9 }));
+halo.position.set(.7, 1.6, -5.5); halo.layers.set(1); scene.add(halo);
+function contactShadow(rx, rz, x, z) { const m = new THREE.Mesh(new THREE.PlaneGeometry(rx * 2, rz * 2), new THREE.MeshBasicMaterial({ map:contactTex, transparent:true, depthWrite:false, toneMapped:false })); m.rotation.x = -Math.PI / 2; m.position.set(x, .002, z); scene.add(m); return m; }
+
+const targets = [];
+function register(key, group, keepParent) {
+  const tint = [];
+  group.traverse(o => { if (o.isMesh && !o.userData.key) { o.userData.key = key; const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => { if (m.emissive) { const own = m.emissive.getHex() !== 0; if (!own) { m.emissive.setHex(0xffd9c8); m.emissiveIntensity = 0; } tint.push({ m, base:own ? m.emissiveIntensity : 0 }); } }); } });
+  if (!keepParent) scene.add(group); targets.push({ key, group, tint, baseY:group.position.y });
+}
+
+// GLB 로더
+const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+const progress = {};
+function setProgress() {
+  const vals = Object.values(progress); const p = vals.length ? vals.reduce((a, b) => a + b, 0) / Object.keys(MODELS).length : 0;
+  document.getElementById('lbar').style.width = (p * 100).toFixed(0) + '%';
+  document.getElementById('lpct').textContent = 'LOADING ' + (p * 100).toFixed(0) + '%';
+}
+function loadModel(name) {
+  return new Promise((res, rej) => loader.load(MODELS[name], g => { progress[name] = 1; setProgress(); res(g.scene); }, e => { if (e.total) { progress[name] = Math.min(e.loaded / e.total, .99); setProgress(); } }, rej));
+}
+// 락커 메시에서 열린 문을 분리해 경첩(피벗) 그룹으로 옮긴다 (메시 로컬 좌표 기준 수치는 원본 GLB 분석값)
+const DOOR = { hx:.394, hz:-.09, dx:.4653, dz:.8852, len:.70, closed:-2.054 };
+function splitDoor(root) {
+  let mesh = null; root.traverse(o => { if (o.isMesh && !mesh) mesh = o; });
+  const g = mesh.geometry, pos = g.attributes.position, idx = g.index;
+  if (!idx) return null;
+  const isDoor = i => {
+    const x = pos.getX(i), z = pos.getZ(i);
+    if (z < -.085 || x < .3) return false;
+    const rx = x - DOOR.hx, rz = z - DOOR.hz, pr = rx * DOOR.dx + rz * DOOR.dz, pe = -rx * DOOR.dz + rz * DOOR.dx;
+    return pr > -.04 && pr < DOOR.len && pe > -.06 && pe < .07;
+  };
+  const door = [], body = [], ia = idx.array;
+  for (let i = 0; i < ia.length; i += 3) { const a = ia[i], b = ia[i + 1], c = ia[i + 2]; ((isDoor(a) && isDoor(b) && isDoor(c)) ? door : body).push(a, b, c); }
+  if (door.length < 300) return null;
+  const dg = new THREE.BufferGeometry(); for (const k in g.attributes) dg.setAttribute(k, g.attributes[k]); dg.setIndex(door);
+  g.setIndex(body); g.computeBoundingSphere(); dg.computeBoundingSphere();
+  const dm = new THREE.Mesh(dg, mesh.material); dm.position.set(-DOOR.hx, 0, -DOOR.hz);
+  const pivot = new THREE.Group(); pivot.position.set(DOOR.hx, 0, DOOR.hz); pivot.add(dm);
+  mesh.parent.add(pivot);
+  return pivot;
+}
+// 모델을 바닥 위에 세우고, 높이를 맞추고, 중심을 원점으로
+function placeOnFloor(obj, height) {
+  const box = new THREE.Box3().setFromObject(obj), size = box.getSize(new THREE.Vector3()), s = height / size.y;
+  obj.scale.setScalar(s);
+  const b2 = new THREE.Box3().setFromObject(obj), c = b2.getCenter(new THREE.Vector3());
+  obj.position.set(-c.x, -b2.min.y, -c.z);
+  const wrap = new THREE.Group(); wrap.add(obj);
+  obj.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; const m = o.material; if (m) { m.metalness = 0; m.metalnessMap = null; m.roughnessMap = null; m.roughness = .82; m.envMapIntensity = .5; if (m.map) m.map.anisotropy = 8; m.needsUpdate = true; } } });
+  wrap.userData.size = new THREE.Box3().setFromObject(wrap).getSize(new THREE.Vector3());
+  return wrap;
+}
+
+// Contact: 락커 문 위쪽에 걸린 행택 (문 피벗 로컬 단위 = 모델 단위)
+function makeTag(name) {
+  const g = new THREE.Group();
+  const tex = canvasTex(256, 384, (c, w, h) => {
+    c.fillStyle = '#f4f1ec'; rr(c, 0, 0, w, h, 26); c.fill();
+    c.fillStyle = '#ddd7cf'; c.beginPath(); c.arc(w / 2, 46, 13, 0, Math.PI * 2); c.fill();
+    c.textAlign = 'center'; c.fillStyle = '#2a2825'; c.font = '500 30px "Helvetica Neue", Pretendard, sans-serif'; c.fillText(name, w / 2, h * .55);
+    c.fillStyle = '#9a8c7d'; c.font = '400 17px "Helvetica Neue", Pretendard, sans-serif'; c.fillText('C O N T A C T', w / 2, h * .66);
+    c.fillStyle = '#9a8c7d'; c.fillRect(w / 2 - 70, h * .72, 140, 2);
+  });
+  // 원점 = 문 윗변에 걸리는 고리 지점. 카드와 끈은 그 아래로 매달림 (흔들림은 이 원점 기준)
+  const hook = cyl(.003, .003, .04, 0x6d655c, [0, 0, -.02], 6); hook.rotation.x = Math.PI / 2; g.add(hook);
+  g.add(cyl(.003, .003, .06, 0x6d655c, [0, -.03, -.04], 6));
+  const sw = new THREE.Group(); g.add(sw); g.userData.swing = sw;
+  sw.add(cyl(.003, .003, .10, 0x6d655c, [0, -.05, -.004], 6));
+  const ring = shade(new THREE.Mesh(new THREE.TorusGeometry(.012, .0025, 8, 20), mat(0xb7b0a6, { metalness:.8, roughness:.3 }))); ring.position.set(0, -.12, 0); sw.add(ring);
+  sw.add(rbox(.19, .28, .008, 0xf4f1ec, [0, -.24, 0], .014, { clearcoat:0, roughness:.8 }));
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(.18, .265), new THREE.MeshPhysicalMaterial({ map:tex, roughness:.8, clearcoat:0 })); face.position.set(0, -.24, .0045); sw.add(face);
+  return g;
+}
+let tag = null;
+
+// 핫스팟(월드 좌표) — 모델 로드 후 갱신
+const HOT = { about:V(1.5, 1.5, .15), work:V(.55, 1.6, -1.5), mirror:V(-.62, 1.35, -.8), contact:V(1.3, 1.8, -1.2) };
+const hotEls = [...document.querySelectorAll('.hot')];
+
+// 스튜디오 먼지 (webgl_points_sprites 방식): 느리게 떠다니는 밝은 점
+const dustTex = canvasTex(64, 64, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.25, 'rgba(255,255,255,.85)'); gr.addColorStop(.6, 'rgba(255,255,255,.25)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+const DUST_N = small ? 110 : 220, DUST_BOX = { x:7, y:3.6, z:6, cx:.7, cy:1.9, cz:-.8 };
+const dustPos = new Float32Array(DUST_N * 3), dustSeed = new Float32Array(DUST_N * 3);
+for (let i = 0; i < DUST_N; i++) { dustPos[i * 3] = DUST_BOX.cx + (Math.random() - .5) * DUST_BOX.x; dustPos[i * 3 + 1] = DUST_BOX.cy + (Math.random() - .5) * DUST_BOX.y; dustPos[i * 3 + 2] = DUST_BOX.cz + (Math.random() - .5) * DUST_BOX.z; dustSeed[i * 3] = Math.random() * 6.28; dustSeed[i * 3 + 1] = .4 + Math.random() * .8; dustSeed[i * 3 + 2] = Math.random() * 6.28; }
+const dustGeo = new THREE.BufferGeometry(); dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ map:dustTex, size:.12, sizeAttenuation:true, color:0xffffff, transparent:true, opacity:.8, depthWrite:false }));
+dust.renderOrder = 3; scene.add(dust);
+function driftDust(t) {
+  const a = dustGeo.attributes.position.array;
+  for (let i = 0; i < DUST_N; i++) {
+    const s0 = dustSeed[i * 3], sp = dustSeed[i * 3 + 1], s2 = dustSeed[i * 3 + 2];
+    a[i * 3] += Math.sin(t * .3 * sp + s0) * .0008;
+    a[i * 3 + 1] += .0012 * sp + Math.cos(t * .25 * sp + s2) * .0005;
+    a[i * 3 + 2] += Math.cos(t * .2 * sp + s0) * .0006;
+    if (a[i * 3 + 1] > DUST_BOX.cy + DUST_BOX.y / 2) a[i * 3 + 1] = DUST_BOX.cy - DUST_BOX.y / 2;
+  }
+  dustGeo.attributes.position.needsUpdate = true;
+}
+const FOCUS = {
+  about:   { pos:V(1.7, 1.5, 3.0), look:V(1.5, 1.15, -.1) },
+  work:    { pos:V(-.55, 1.55, 1.3), look:V(.45, 1.15, -1.75), dx:.75 },
+  mirror:  { pos:V(-1.35, 1.4, 2.2), look:V(-.72, 1.0, -1.0), dx:.7 },
+  contact: { pos:V(1.3, 2.0, .6), look:V(1.3, 1.75, -1.2), dx:.55, pd:{ ly:-.5, py:.15, pz:.9 } },
+};
+
+let hailey, locker, mirrorObj, sneakersObj, doorPivot = null, introAt = -1, hBody = null, hBodyY = 0;
+const H_POS = V(1.5, 0, -.1), H_ROT = -.3;
+Promise.all([loadModel('locker'), loadModel('hailey'), loadModel('mirror'), loadModel('sneakers')]).then(([l, h, mi, sn]) => {
+  // 소품: 왼쪽에 아치 스탠드 거울(세로 축), 캐릭터 발치에 벗어둔 스니커즈(가로 축)
+  mirrorObj = placeOnFloor(mi, 1.78); mirrorObj.position.set(-.72, 0, -1.0); mirrorObj.rotation.y = .55; register('mirror', mirrorObj);
+  contactShadow(.45, .4, mirrorObj.position.x, mirrorObj.position.z);
+  HOT.mirror.set(mirrorObj.position.x + .12, 1.3, mirrorObj.position.z + .3);
+  sneakersObj = placeOnFloor(sn, .19); sneakersObj.position.set(1.0, 0, -.2); sneakersObj.rotation.y = -.7; scene.add(sneakersObj);
+  contactShadow(.38, .32, sneakersObj.position.x, sneakersObj.position.z);
+  doorPivot = splitDoor(l);
+  if (doorPivot) {
+    tag = makeTag(CONTENT.name); const sAlong = .56, off = .022;
+    tag.position.set(DOOR.dx * sAlong - DOOR.dz * off, .925, DOOR.dz * sAlong + DOOR.dx * off);
+    tag.rotation.y = Math.atan2(-DOOR.dz, DOOR.dx);
+    doorPivot.add(tag); register('contact', tag, true);
+  }
+  locker = placeOnFloor(l, 2.05); locker.position.set(.45, 0, wallZ + locker.userData.size.z / 2 + .04); register('work', locker);
+  if (tag) { locker.updateMatrixWorld(true); const tp = tag.getWorldPosition(new THREE.Vector3()); FOCUS.contact.look.copy(tp).setY(tp.y - .28); FOCUS.contact.pos.set(tp.x - .55, tp.y + .45, tp.z + 1.25); }
+  contactShadow(1.0, .7, locker.position.x + .1, locker.position.z - locker.userData.size.z / 2 + .3);
+  hailey = placeOnFloor(h, 1.72); hailey.position.copy(H_POS); hailey.rotation.y = H_ROT; register('about', hailey);
+  hBody = hailey.children[0]; hBodyY = hBody.position.y;
+  contactShadow(.55, .42, H_POS.x, H_POS.z);
+  HOT.work.set(locker.position.x + .1, 1.6, locker.position.z - locker.userData.size.z / 2 + .5);
+  HOT.about.set(hailey.position.x + .02, 1.06, hailey.position.z + .32); // 상의(가슴) 위치
+  FOCUS.work.look.set(locker.position.x + .1, 1.15, locker.position.z - locker.userData.size.z / 2 + .2);
+  if (doorPivot && !reduce) doorPivot.rotation.y = DOOR.closed;
+  introAt = clock.elapsedTime;
+  document.body.classList.remove('loading');
+  setTimeout(() => document.getElementById('loader').classList.add('off'), 300);
+  window.__dbg.loaded = true;
+  window.__dbg.sizes = { locker:locker.userData.size.toArray(), hailey:hailey.userData.size.toArray() };
+}).catch(e => {
+  window.__err = String(e && e.stack || e);
+  const ld = document.getElementById('loader'); ld.classList.add('err');
+  document.getElementById('lpct').textContent = '모델을 불러오지 못했어요. 새로고침해 주세요.';
+});
+
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.fov = camera.aspect < 1 ? 60 : 38; camera.updateProjectionMatrix(); }
+addEventListener('resize', () => { resize(); go(current); }); resize();
+
+const portrait = () => innerWidth / innerHeight < 1;
+const homePos = () => V(portrait() ? .45 : .5, portrait() ? 1.35 : 1.45, portrait() ? 5.8 : 4.15), homeLook = V(.45, 1.02, -1.0);
+const homeLookNow = () => portrait() ? V(.4, 1.0, -1.0) : homeLook.clone();
+const camPos = reduce ? homePos() : homePos().add(V(.4, .5, 3.2)), camLook = homeLookNow();
+let goalPos = homePos(), goalLook = homeLookNow(), current = null, mx = 0, my = 0, smx = 0, smy = 0, hover = null;
+
+const panel = document.getElementById('panel'), hint = document.getElementById('hint');
+const navBtns = [...document.querySelectorAll('nav button')];
+function go(key) {
+  current = key; document.body.classList.toggle('zoomed', !!key);
+  if (key) {
+    const f = FOCUS[key]; goalPos = f.pos.clone(); goalLook = f.look.clone();
+    if (!portrait()) { const dx = f.dx ?? .8; goalPos.x += dx; goalLook.x += dx; } else { const pd = f.pd ?? { ly:-1.35, py:-.2, pz:1.4 }; goalLook.y += pd.ly; goalPos.y += pd.py; goalPos.z += pd.pz; }
+    document.getElementById('ptag').textContent = TITLES[key].toLowerCase();
+    document.getElementById('ptitle').textContent = TITLES[key];
+    document.getElementById('pbody').replaceChildren(render(key));
+    panel.classList.add('on'); hint.classList.add('off');
+  } else { goalPos = homePos(); goalLook = homeLookNow(); panel.classList.remove('on'); }
+  navBtns.forEach(b => b.classList.toggle('on', b.dataset.k === key));
+}
+navBtns.forEach(b => b.addEventListener('click', () => go(b.dataset.k)));
+hotEls.forEach(b => b.addEventListener('click', () => go(b.dataset.k)));
+document.getElementById('back').addEventListener('click', () => go(null));
+document.getElementById('home').addEventListener('click', () => go(null));
+addEventListener('keydown', e => { if (e.key === 'Escape') go(null); });
+
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+// 피킹: 메시 삼각형 대신 대상별 월드 바운딩 박스에 레이를 쏜다 (수십만 삼각형 레이캐스트가 마우스 끊김의 원인이었음)
+const boxes = new Map(), hitP = new THREE.Vector3();
+function refreshBoxes() { for (const tg of targets) { const b = boxes.get(tg.key) || new THREE.Box3(); b.setFromObject(tg.group).expandByScalar(tg.key === 'contact' ? .12 : .05); boxes.set(tg.key, b); } }
+function pickAt(cx, cy) {
+  ndc.set(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  let best = null, bestD = Infinity;
+  for (const [key, b] of boxes) { if (ray.ray.intersectBox(b, hitP)) { const d = hitP.distanceToSquared(ray.ray.origin); if (d < bestD) { bestD = d; best = key; } } }
+  return best;
+}
+let pendingPick = null, boxTick = 0;
+addEventListener('pointermove', e => { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; pendingPick = [e.clientX, e.clientY]; });
+canvas.addEventListener('click', e => { const k = pickAt(e.clientX, e.clientY); if (k) go(k); else if (current) go(null); });
+
+const tmpV = new THREE.Vector3();
+const clock = DEMO ? { t:0, last:0, getDelta() { const d = this.t - this.last; this.last = this.t; return d; }, get elapsedTime() { return this.t; } } : new THREE.Clock();
+function tick() { try {
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  const k = reduce ? 1 : 1 - Math.pow(.04, dt);
+  camPos.lerp(goalPos, k); camLook.lerp(goalLook, k);
+  const sway = current || reduce ? .12 : 1;
+  if (targets.length && (boxTick++ % 45 === 0)) refreshBoxes();
+  if (pendingPick) { const h = pickAt(pendingPick[0], pendingPick[1]); pendingPick = null; if (h !== hover) { hover = h; canvas.style.cursor = h ? 'pointer' : 'default'; } }
+  const fm = 1 - Math.pow(.88, dt * 60); smx += (mx - smx) * fm; smy += (my - smy) * fm;
+  camera.position.set(camPos.x + smx * 1.0 * sway, camPos.y - smy * .4 * sway + (reduce ? 0 : Math.sin(t * .5) * .04), camPos.z);
+  camera.lookAt(camLook);
+
+  const f15 = 1 - Math.pow(.85, dt * 60), f08 = 1 - Math.pow(.92, dt * 60);
+  for (const tg of targets) {
+    const on = hover === tg.key || current === tg.key;
+    tg.group.position.y += ((tg.baseY + (on && !reduce ? .05 : 0)) - tg.group.position.y) * f15;
+    for (const c of tg.tint) c.m.emissiveIntensity += ((c.base + (on ? .07 : 0)) - c.m.emissiveIntensity) * f15;
+  }
+  if (hailey && !reduce) {
+    const it = t - introAt, e3 = x => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 3), sm = x => { x = Math.min(Math.max(x, 0), 1); return x * x * (3 - 2 * x); };
+    if (doorPivot) doorPivot.rotation.y = DOOR.closed * (1 - e3((it - .5) / 1.3));
+    const reach = 1 - sm((it - 1.5) / 1.1);           // 1: 문을 여는 자세, 0: 평소 자세
+    hailey.rotation.y = H_ROT - .95 * reach + Math.sin(t * .6) * .04 * (1 - reach);
+    hailey.rotation.z = .07 * reach;
+    hailey.position.x = H_POS.x - .16 * reach;
+    hailey.position.z = H_POS.z - .12 * reach;
+    // 호흡: 아주 작은 상하 + 어깨 폭
+    if (hBody) { hBody.position.y = hBodyY + Math.sin(t * 1.7) * .006; hBody.scale.set(1 + Math.sin(t * 1.7) * .003, 1, 1 + Math.sin(t * 1.7) * .003); }
+    // 행택: 문이 움직인 직후 크게, 이후 가볍게 흔들림
+    if (tag) { const amp = .05 + .28 * Math.max(0, 1 - Math.max(0, it - .5) / 4); const sw = tag.userData.swing; sw.rotation.z = Math.sin(t * 2.6) * amp; sw.rotation.x = Math.sin(t * 1.9 + 1) * amp * .5; }
+  }
+  // 호버 스팟: 가리킨 대상 위쪽 앞으로 이동하며 켜짐
+  const focusKey = hover || current;
+  if (focusKey) spotGoal.copy(HOT[focusKey]).add(tmpV.set(0, .5, 1.1));
+  spot.position.lerp(spotGoal, f08);
+  spot.intensity += ((focusKey && !reduce ? 3 : 0) - spot.intensity) * f08;
+  if (tag) tag.getWorldPosition(HOT.contact);
+  hotEls.forEach(h => {
+    const p = tmpV.copy(HOT[h.dataset.k]).project(camera);
+    h.style.transform = `translate(${(p.x * .5 + .5) * innerWidth}px, ${(-p.y * .5 + .5) * innerHeight}px)`;
+    h.style.visibility = p.z < 1 ? 'visible' : 'hidden';
+  });
+  if (!reduce) driftDust(t);
+  renderer.render(scene, camera);
+} catch (e) { window.__err = String(e && e.stack || e); } }
+if (!DEMO) renderer.setAnimationLoop(tick);
+
+// 데모 시나리오: 인트로 → 락커 호버 → Work → About → Now → Contact → 홈. 외부에서 __seek(t) 로 프레임 단위 구동.
+const DEMO_EVENTS = [[5.0, 'hover', 'work'], [6.0, 'go', 'work'], [11.5, 'go', 'about'], [17.0, 'go', 'mirror'], [22.5, 'go', 'contact'], [27.5, 'go', null]];
+let demoIdx = 0, demoCur = null, demoT0 = 0;
+const sm01 = x => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+window.__seek = (t) => {
+  clock.t = t; if (t === 0) introAt = 1.0; // 데모: 로더가 걷힌 뒤 문이 열리도록 1초 지연
+  while (demoIdx < DEMO_EVENTS.length && DEMO_EVENTS[demoIdx][0] <= t) { const [, kind, key] = DEMO_EVENTS[demoIdx++]; if (kind === 'hover') hover = key; else { hover = null; go(key); demoCur = key; demoT0 = t; } }
+  mx = Math.sin(t * .35) * .22; my = Math.cos(t * .27) * .12;
+  document.getElementById('loader').style.opacity = String(1 - sm01((t - .3) / .9));
+  const e = demoCur ? sm01((t - demoT0 - .45) / .5) : 1 - sm01((t - demoT0) / .4);
+  panel.style.opacity = String(e); panel.style.transform = `translate(${30 * (1 - e)}px,-50%)`;
+  hint.style.opacity = String(t < 5.5 ? sm01((t - 1.6) / .6) : 1 - sm01((t - 5.5) / .5));
+  tick();
+};
+
+window.__dbg = { go, loaded:false, dust, replay(){ introAt = clock.elapsedTime; camPos.copy(homePos().add(V(.4, .5, 3.2))); } };
+</script>
+</body>
+</html>
